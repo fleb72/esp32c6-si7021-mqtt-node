@@ -1,0 +1,31 @@
+# --- Build output ---
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# --- SDKConfig ---
+sdkconfig.old
+sdkconfig.ci
+
+# --- Component manager ---
+dependencies.lock
+
+# --- ESP-IDF tools ---
+*.bin
+*.elf
+*.map
+*.log
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+
+# --- IDE files ---
+.vscode/
+.idea/
+
+# --- Misc ---
+*.tmp
+*.bak

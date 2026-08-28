@@ -1,0 +1,77 @@
+menu "Example configuration"
+    choice EXAMPLE_CHIP_TYPE
+        prompt "Select chip type"
+        default EXAMPLE_CHIP_TYPE_SI70xx
+        help
+            Select chip type.
+
+        config EXAMPLE_CHIP_TYPE_SI70xx
+            bool "SI70xx"
+            help
+                Choose this when the chip is one of SI70xx family.
+        config EXAMPLE_CHIP_TYPE_SHT2x_HTU21D
+            bool "SHT2x or HTU21D"
+            help
+                Choose this when the chip is either SHT2x or HTU21D.
+    endchoice
+
+    rsource "../Kconfig.i2c"
+endmenu
+
+menu "WiFi Configuration"
+
+    config WIFI_SSID
+        string "WiFi SSID"
+        default ""
+        help
+            SSID du réseau WiFi
+
+    config WIFI_PASSWORD
+        string "WiFi Password"
+        default ""
+        help
+            Mot de passe du réseau WiFi
+
+endmenu
+
+menu "MQTT Configuration"
+
+    config MQTT_BROKER_URI
+        string "MQTT broker URI"
+        default "mqtt://192.168.1.126"
+        help
+            Adresse du broker MQTT (ex: mqtt://192.168.1.126)
+
+    config MQTT_BROKER_PORT
+        int "MQTT broker port"
+        default 1883
+        help
+            Port du broker MQTT (ex: 1883)
+
+    config MQTT_PUB_TOPIC
+        string "MQTT publish topic"
+        default "esp32c6/si7021"
+        help
+            Topic sur lequel publier les mesures
+
+    config MQTT_QOS
+        int "MQTT QoS level"
+        range 0 2
+        default 0
+        help
+            Niveau QoS pour les publications (0, 1 ou 2)
+
+    config MQTT_USERNAME
+        string "MQTT username"
+        default ""
+        help
+            Nom d'utilisateur MQTT (laisser vide si non utilisé)
+
+    config MQTT_PASSWORD
+        string "MQTT password"
+        default ""
+        help
+            Mot de passe MQTT (laisser vide si non utilisé)
+
+endmenu
+
