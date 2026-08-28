@@ -34,7 +34,7 @@ static SemaphoreHandle_t g_si7021_mutex;
 volatile bool wifi_connected = false; // WiFi connecté ?
 volatile bool mqtt_connected = false; // connexion au broker ?
 
-static esp_mqtt_client_handle_t client = NULL;
+static esp_mqtt_client_handle_t client = NULL; // client MQTT
 
 static QueueHandle_t mqtt_queue = NULL; // queue pour les messages MQTT
 
@@ -102,13 +102,24 @@ void si7021_task(void *pvParameters)
         */
 
         // Mise à jour des valeurs globales
-        xSemaphoreTake(g_si7021_mutex, portMAX_DELAY);
-        if (resT==ESP_OK && resH==ESP_OK) {
-            g_si7021_data.temperature = valT;
-            g_si7021_data.humidity = valH;               
-        }
+            /* g_si7021_data est une variable globale partagée par plusieurs tâches à la fois, 
+             * qui peuvent lire ou écrire dans cette variable (accès concurrents).
+             *
+             * Exemples de ce qui pourrait se produire sans mutex :
+             *  - une tâche écrit dans g_si7021_data pendant qu’une autre lit ==> valeurs incohérentes ;
+             *  - une tâche met à jour la température pendant que l’autre lit l’humidité ==> mélange de deux états.
+             *
+             * Le mutex garantit qu’au moment de la lecture ou de l'écriture, aucune autre tâche ne peut accéder à la structure,
+             * assurant ainsi la cohérence des données partagées.
+            */
 
-        xSemaphoreGive(g_si7021_mutex);
+        if (resT==ESP_OK && resH==ESP_OK) {
+            xSemaphoreTake(g_si7021_mutex, portMAX_DELAY);
+            g_si7021_data.temperature = valT;
+            g_si7021_data.humidity = valH; 
+            xSemaphoreGive(g_si7021_mutex);              
+        }
+        
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -116,6 +127,7 @@ void si7021_task(void *pvParameters)
 bool si7021_get_data(float *temperature, float *humidity)
 {
     if (xSemaphoreTake(g_si7021_mutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        // accès en lecture de g_si7021_data protégé par un mutex
         *temperature = g_si7021_data.temperature;
         *humidity = g_si7021_data.humidity;
         xSemaphoreGive(g_si7021_mutex);
@@ -161,8 +173,7 @@ void queue_writer_task(void *pvParameters)
                         .temperature = t,
                         .humidity = h
                     };
-
-    
+   
                 printf("Envoi dans la queue -> Temperature: %.2f °C, Humidity: %.2f %%\n", t, h);
                 xQueueSend(mqtt_queue, &msg, 0);   // envoi immédiat, non bloquant
 
@@ -172,19 +183,19 @@ void queue_writer_task(void *pvParameters)
             }
         }
        
-        //vTaskDelay(pdMS_TO_TICKS(5000)); // vérification toutes les 5 secondes
-        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(5000));
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(5000)); // 5s mini entre deux envois dans la queue
     }
 }
 
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data)
+// Gestionnaire d'évènements WiFi
 {
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         wifi_connected = false;
         printf("WiFi disconnected, retrying...\n");
-        esp_wifi_connect();
+        esp_wifi_connect(); // relancer la connexion WiFi en cas de coupure
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         wifi_connected = true;
         printf("WiFi connected, IP obtained.\n");
@@ -238,6 +249,7 @@ void wifi_task(void *pvParameters)
 
 static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
                                int32_t event_id, void *event_data)
+// Gestionnaire d'évènements MQTT
 {
     esp_mqtt_event_handle_t event = event_data;
 
@@ -260,7 +272,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
 static void mqtt_task(void *pvParameters)
 {
-    // --- config MQTT ---
+    // --- configuration MQTT ---
     esp_mqtt_client_config_t mqtt_cfg = {
         .broker.address.uri = CONFIG_MQTT_BROKER_URI,
         .broker.address.port = CONFIG_MQTT_BROKER_PORT,
@@ -278,6 +290,7 @@ static void mqtt_task(void *pvParameters)
     );
 
     esp_mqtt_client_start(client);
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     si7021_data_t msg;
 
@@ -289,7 +302,7 @@ static void mqtt_task(void *pvParameters)
             continue;
         }
 
-        // attendre un message venant de print_task
+        // attendre un message
         if (xQueueReceive(mqtt_queue, &msg, portMAX_DELAY))
         {         
             char payload[64];
@@ -299,8 +312,7 @@ static void mqtt_task(void *pvParameters)
 
             esp_mqtt_client_publish(client, CONFIG_MQTT_PUB_TOPIC, payload, 0, CONFIG_MQTT_QOS, 0);
 
-            printf("MQTT published: %s\n", payload);
-     
+            printf("MQTT published: %s\n", payload);     
         }
     }
 }
