@@ -14,6 +14,9 @@
 // mqtt
 #include <mqtt_client.h>
 
+// sntp
+#include <esp_sntp.h>
+
 #ifndef APP_CPU_NUM
 #define APP_CPU_NUM PRO_CPU_NUM
 #endif
@@ -37,6 +40,32 @@ volatile bool mqtt_connected = false; // connexion au broker ?
 static esp_mqtt_client_handle_t client = NULL; // client MQTT
 
 static QueueHandle_t mqtt_queue = NULL; // queue pour les messages MQTT
+
+
+bool get_timestamp(char *buffer, size_t len)
+{
+    time_t now;
+    struct tm timeinfo;
+
+    time(&now);
+
+    if (now < 1000000000) {
+        return false;
+    }
+
+    localtime_r(&now, &timeinfo);
+
+    int year = timeinfo.tm_year + 1900;
+    if (year < 2020) {
+        return false;
+    }
+
+    if (strftime(buffer, len, "%Y-%m-%dT%H:%M:%S", &timeinfo) == 0) {
+        return false;
+    }
+
+    return true;
+}
 
 
 void si7021_task(void *pvParameters)
@@ -188,6 +217,20 @@ void queue_writer_task(void *pvParameters)
 }
 
 
+static void start_sntp(void)
+{
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_setservername(1, "time.google.com");
+    esp_sntp_setservername(2, "fr.pool.ntp.org");
+
+    esp_sntp_init();
+
+    printf("SNTP started.\n");
+}
+
+
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data)
 // Gestionnaire d'évènements WiFi
@@ -211,6 +254,10 @@ static void wifi_init_sta(void)
 
     ESP_ERROR_CHECK(esp_event_handler_register( WIFI_EVENT,
                                                 WIFI_EVENT_STA_DISCONNECTED,
+                                                &wifi_event_handler,
+                                                NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register( IP_EVENT,
+                                                IP_EVENT_STA_GOT_IP,
                                                 &wifi_event_handler,
                                                 NULL));
 
@@ -242,7 +289,15 @@ void wifi_task(void *pvParameters)
 {
     wifi_init_sta();
 
-    while (1) {
+    // Attendre la connexion WiFi avant SNTP
+    while (!wifi_connected) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+
+    // Lancer SNTP une seule fois
+    start_sntp();
+
+    while (1) { // boucle passive
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
@@ -305,14 +360,20 @@ static void mqtt_task(void *pvParameters)
         // attendre un message
         if (xQueueReceive(mqtt_queue, &msg, portMAX_DELAY))
         {         
-            char payload[64];
-            snprintf(payload, sizeof(payload),
-                     "{\"temperature\":%.2f,\"humidity\":%.2f}",
-                     msg.temperature, msg.humidity);
+            char timestamp[32] = {0};
 
-            esp_mqtt_client_publish(client, CONFIG_MQTT_PUB_TOPIC, payload, 0, CONFIG_MQTT_QOS, 0);
+            if (get_timestamp(timestamp, sizeof(timestamp))) {            
+                char payload[128];
+                snprintf(payload, sizeof(payload),
+                        "{\"temperature\":%.2f,\"humidity\":%.2f,\"timestamp\":\"%s\"}",
+                        msg.temperature, msg.humidity, timestamp);
 
-            printf("MQTT published: %s\n", payload);     
+                esp_mqtt_client_publish(client, CONFIG_MQTT_PUB_TOPIC, payload, 0, CONFIG_MQTT_QOS, 0);
+
+                printf("MQTT published at %s: %s\n", timestamp, payload);
+            } else {
+                printf("Timestamp Error (SNTP not ready), MQTT not published\n");
+            } 
         }
     }
 }
