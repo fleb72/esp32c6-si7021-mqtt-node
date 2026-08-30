@@ -351,15 +351,15 @@ static void mqtt_task(void *pvParameters)
 
     while (1)
     {
-        // attendre que MQTT soit connecté
-        if (!mqtt_connected) {
-            vTaskDelay(pdMS_TO_TICKS(500));
-            continue;
-        }
-
         // attendre un message
         if (xQueueReceive(mqtt_queue, &msg, portMAX_DELAY))
-        {         
+        {     
+            // attendre que MQTT soit connecté
+            if (!mqtt_connected) {
+                vTaskDelay(pdMS_TO_TICKS(500));
+                continue;
+            }
+            
             char timestamp[32] = {0};
 
             if (get_timestamp(timestamp, sizeof(timestamp))) {            
@@ -390,12 +390,8 @@ void app_main()
     mqtt_queue = xQueueCreate(10, sizeof(si7021_data_t));
     assert(mqtt_queue != NULL);
 
-
     xTaskCreatePinnedToCore(si7021_task, "si7021", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-
     xTaskCreatePinnedToCore(queue_writer_task, "queue_writer", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, APP_CPU_NUM);
-
     xTaskCreatePinnedToCore(wifi_task, "wifi", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(mqtt_task, "mqtt", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-
 }
