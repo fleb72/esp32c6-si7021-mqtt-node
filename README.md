@@ -1,6 +1,8 @@
 # Nœud météo MQTT avec ESP32‑C6 et capteur SI7021
-Ce projet met en œuvre un nœud météo basé sur un ESP32‑C6 et un capteur SI7021, avec publication des mesures en MQTT.
+Ce projet met en œuvre un nœud météo basé sur un ESP32‑C6 et un capteur SI7021, avec publication des mesures horodatées en MQTT.
 Les données peuvent ensuite être intégrées dans un tableau de bord (Grafana, MQTT Explorer, etc.).
+Ce projet sert de prototype pour un petit nœud météo local.
+Il peut être étendu facilement (NVS, interface Web, BLE, autres capteurs…).
 
 ## Version de l’ESP‑IDF
 Ce projet utilise ESP‑IDF v5.5.
@@ -16,7 +18,7 @@ Lecture périodique du capteur SI7021 via I²C.
 Détection des variations significatives (température / humidité) et envoi périodique d’un message dans une queue.
 
 - **mqtt_task**  
-Publication des mesures en MQTT dès qu’un message est disponible dans la queue.
+Publication des mesures en MQTT dès qu’un message est disponible dans la queue. La publication est horodatée (RTC et synchro via SNTP).
 
 - **wifi_task**  
 Connexion au réseau Wi‑Fi en mode station.
@@ -28,7 +30,7 @@ Les tâches communiquent via :
 - une queue pour transmettre les mesures à publier.
 
 ## Configuration
-Les paramètres suivants sont configurables via `menuconfig` :
+Les paramètres suivants sont configurables via `idf.py menuconfig` :
 
 - SSID / mot de passe Wi‑Fi
 
@@ -49,17 +51,17 @@ Le fichier `Kconfig.projbuild` contient les entrées correspondantes.
 ```
 idf.py set-target esp32c6
 idf.py build
-idf.py flash
-idf.py monitor
+idf.py -p PORT flash
+idf.py -p PORT monitor
 ```
 ## Format des messages MQTT
 Les mesures sont publiées sous forme de JSON :
 
 ```json
-{"temperature": 23.5, "humidity": 48.2}
+{"temperature":23.57,"humidity":59.10,"timestamp":"2026-08-30T19:12:18"}
 ```
-
-Le topic est défini dans `menuconfig`.
+Les données sont horodatées au moment de la publication MQTT (date/heure UTC) en se connectant à un serveur SNTP.
+Le topic de publication est défini dans `menuconfig`.
 
 ## Matériel utilisé
 - ESP32‑C6
@@ -67,7 +69,3 @@ Le topic est défini dans `menuconfig`.
 - Capteur SI7021 (I²C)
 
 - Broker MQTT (Mosquitto ou autre)
-
-**Notes**
-Ce projet sert de prototype pour un petit nœud météo local.
-Il peut être étendu facilement (timestamp, retain, NVS, interface Web, BLE, autres capteurs…).
