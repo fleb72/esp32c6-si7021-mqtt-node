@@ -172,8 +172,8 @@ void queue_writer_task(void *pvParameters)
     float lastH = -1000.0f;
     float t, h;
 
-    const float TEMP_DELTA = 0.5f;   // seuil de variation température
-    const float HUM_DELTA  = 1.0f;   // seuil de variation humidité
+    const float TEMP_DELTA = 0.5f;   // seuil de variation température en °C
+    const float HUM_DELTA  = 1.0f;   // seuil de variation humidité en %
 
     const uint32_t PERIODIC_DELAY_MS = 12 * 60 * 1000; // 12 minutes, 5x par heure
     uint32_t lastWriteTime = xTaskGetTickCount();

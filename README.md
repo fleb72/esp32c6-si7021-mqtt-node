@@ -1,7 +1,7 @@
 # Nœud météo MQTT avec ESP32‑C6 et capteur SI7021
 Ce projet met en œuvre un nœud météo basé sur un ESP32‑C6 et un capteur SI7021, avec publication des mesures horodatées en MQTT.
 Les données peuvent ensuite être intégrées dans un tableau de bord (Grafana, MQTT Explorer, etc.).
-Ce projet sert de prototype pour un petit nœud météo local.
+Ce projet sert de prototype pour un petit nœud météo local, et à titre pédagogique pour illustrer l’usage d’un ESP32‑C6, d’un capteur I²C, de FreeRTOS, SNTP, et de MQTT.
 Il peut être étendu facilement (NVS, interface Web, BLE, autres capteurs…).
 
 ## Version de l’ESP‑IDF
@@ -46,22 +46,44 @@ Les paramètres suivants sont configurables via `idf.py menuconfig` :
 
 Le fichier `Kconfig.projbuild` contient les entrées correspondantes.
 
-## Compilation et flash
+## Quick Start
 
 ```
+git clone https://github.com/fleb72/esp32c6-si7021-mqtt-node
 idf.py set-target esp32c6
+idf.py menuconfig   # configurer WiFi + MQTT
 idf.py build
-idf.py -p PORT flash
+idf.py -p PORT flash // PORT=/dev/ttyUSB0 ou PORT=COM3, etc.
 idf.py -p PORT monitor
 ```
+
 ## Format des messages MQTT
 Les mesures sont publiées sous forme de JSON :
 
 ```json
-{"temperature":23.57,"humidity":59.10,"timestamp":"2026-08-30T19:12:18"}
+{ "temperature" : 23.57,
+  "humidity" : 59.10,
+  "timestamp" : "2026-08-30T19:12:18" }
 ```
 Les données sont horodatées au moment de la publication MQTT (date/heure UTC) en se connectant à un serveur SNTP.
 Le topic de publication est défini dans `menuconfig`.
+
+## Exemple de log
+
+```
+...
+WiFi connected, IP obtained.
+I (5019) esp_netif_handlers: sta ip: 192.168.1.131, mask: 255.255.255.0, gw: 192.168.1.254
+SNTP started.
+Envoi dans la queue -> Temperature: 23.66 °C, Humidity: 59.13 %
+MQTT connected
+Envoi dans la queue -> Temperature: 26.53 °C, Humidity: 64.61 %
+MQTT published at 2026-08-31T19:52:23: {"temperature":26.53,"humidity":64.61,"timestamp":"2026-08-31T19:52:23"}
+Envoi dans la queue -> Temperature: 25.45 °C, Humidity: 68.37 %
+MQTT published at 2026-08-31T19:52:28: {"temperature":25.45,"humidity":68.37,"timestamp":"2026-08-31T19:52:28"}
+...
+```
+
 
 ## Matériel utilisé
 - ESP32‑C6
