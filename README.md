@@ -11,7 +11,7 @@ Il est recommandé d’utiliser cette version ou une version ultérieure compati
 ## Fonctionnement général
 Le programme repose sur plusieurs tâches FreeRTOS :
 
-- **si7021_task** 
+- **si7021_task**
 Lecture périodique du capteur SI7021 via I²C.
 
 - **queue_writer_task**  
