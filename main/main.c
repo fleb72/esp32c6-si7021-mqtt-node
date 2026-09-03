@@ -391,7 +391,7 @@ void app_main()
     assert(mqtt_queue != NULL);
 
     xTaskCreatePinnedToCore(si7021_task, "si7021", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(queue_writer_task, "queue_writer", configMINIMAL_STACK_SIZE * 4, NULL, 5, NULL, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(wifi_task, "wifi", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(mqtt_task, "mqtt", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(queue_writer_task, "queue_writer", configMINIMAL_STACK_SIZE * 4, NULL, 4, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(wifi_task, "wifi", configMINIMAL_STACK_SIZE * 8, NULL, 3, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(mqtt_task, "mqtt", configMINIMAL_STACK_SIZE * 8, NULL, 4, NULL, APP_CPU_NUM);
 }
