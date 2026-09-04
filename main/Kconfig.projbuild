@@ -75,3 +75,30 @@ menu "MQTT Configuration"
 
 endmenu
 
+menu "Configuration du noeud météo"
+
+    config TEMP_DELTA
+        int "Seuil de variation de température (dixièmes de °C)"
+        default 5
+        help
+            Seuil de variation de température exprimé en dixièmes de degré Celsius.
+
+    config HUM_DELTA
+        int "Seuil de variation d'humidité (dixièmes de %)"
+        default 10
+        help
+            Seuil de variation d'humidité relative exprimé en dixièmes de pourcentage.
+
+    config PERIODIC_DELAY_MINUTES
+        int "Intervalle de publication périodique (minutes)"
+        default 12
+        help
+            Intervalle de publication périodique en minutes.
+
+    config MIN_PUBLISH_INTERVAL_SECONDS
+        int "Intervalle minimal entre deux publications (secondes)"
+        default 5
+        help
+            Durée minimale en secondes entre deux publications MQTT.
+
+endmenu

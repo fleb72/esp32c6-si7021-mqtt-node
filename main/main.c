@@ -172,10 +172,11 @@ void queue_writer_task(void *pvParameters)
     float lastH = -1000.0f;
     float t, h;
 
-    const float TEMP_DELTA = 0.5f;   // seuil de variation température en °C
-    const float HUM_DELTA  = 1.0f;   // seuil de variation humidité en %
+    const float temp_delta = CONFIG_TEMP_DELTA / 10.0f;   // seuil de variation température en °C
+    const float hum_delta = CONFIG_HUM_DELTA / 10.0f;   // seuil de variation humidité en %
+    const uint32_t periodic_delay_ms = CONFIG_PERIODIC_DELAY_MINUTES * 60 * 1000;
+    const uint32_t min_publish_interval_ms = CONFIG_MIN_PUBLISH_INTERVAL_SECONDS * 1000;
 
-    const uint32_t PERIODIC_DELAY_MS = 12 * 60 * 1000; // 12 minutes, 5x par heure
     uint32_t lastWriteTime = xTaskGetTickCount();
 
     TickType_t lastWake = xTaskGetTickCount();
@@ -190,11 +191,11 @@ void queue_writer_task(void *pvParameters)
                 continue;   // on attend la prochaine mesure
             }
 
-            bool tempChanged = fabsf(t - lastT) >= TEMP_DELTA;
-            bool humChanged  = fabsf(h - lastH) >= HUM_DELTA;
+            bool tempChanged = fabsf(t - lastT) >= temp_delta;
+            bool humChanged  = fabsf(h - lastH) >= hum_delta;
 
             uint32_t now = xTaskGetTickCount();
-            bool periodicWrite = (now - lastWriteTime) >= pdMS_TO_TICKS(PERIODIC_DELAY_MS);
+            bool periodicWrite = (now - lastWriteTime) >= pdMS_TO_TICKS(periodic_delay_ms);
 
             if (tempChanged || humChanged || periodicWrite)
             {
@@ -204,7 +205,7 @@ void queue_writer_task(void *pvParameters)
                     };
    
                 printf("Envoi dans la queue -> Temperature: %.2f °C, Humidity: %.2f %%\n", t, h);
-                xQueueSend(mqtt_queue, &msg, 0);   // envoi immédiat, non bloquant
+                xQueueSend(mqtt_queue, &msg, 0); // envoi dans la queue
 
                 lastT = t;
                 lastH = h;
@@ -212,7 +213,7 @@ void queue_writer_task(void *pvParameters)
             }
         }
        
-        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(5000)); // 5s mini entre deux envois dans la queue
+        vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(min_publish_interval_ms)); // délai minimal entre deux publications
     }
 }
 
