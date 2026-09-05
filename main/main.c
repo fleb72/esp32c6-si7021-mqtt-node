@@ -69,6 +69,7 @@ bool get_timestamp(char *buffer, size_t len)
 
 
 void si7021_task(void *pvParameters)
+// Acquisition capteur
 {
     i2c_dev_t dev;
     memset(&dev, 0, sizeof(i2c_dev_t));
@@ -149,7 +150,7 @@ void si7021_task(void *pvParameters)
             xSemaphoreGive(g_si7021_mutex);              
         }
         
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(CONFIG_MEASURE_INTERVAL_SECONDS * 1000));
     }
 }
 
@@ -166,7 +167,8 @@ bool si7021_get_data(float *temperature, float *humidity)
 }
 
 
-void queue_writer_task(void *pvParameters)
+void decision_task(void *pvParameters)
+// Décision du publication
 {
     float lastT = -1000.0f;   // valeurs impossibles pour forcer un premier affichage
     float lastH = -1000.0f;
@@ -287,6 +289,7 @@ static void wifi_init_sta(void)
 
 
 void wifi_task(void *pvParameters)
+// Service réseau WiFi
 {
     wifi_init_sta();
 
@@ -327,6 +330,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 
 
 static void mqtt_task(void *pvParameters)
+// Publication MQTT
 {
     // --- configuration MQTT ---
     esp_mqtt_client_config_t mqtt_cfg = {
@@ -369,7 +373,7 @@ static void mqtt_task(void *pvParameters)
                         "{\"temperature\":%.2f,\"humidity\":%.2f,\"timestamp\":\"%s\"}",
                         msg.temperature, msg.humidity, timestamp);
 
-                esp_mqtt_client_publish(client, CONFIG_MQTT_PUB_TOPIC, payload, 0, CONFIG_MQTT_QOS, 0);
+                esp_mqtt_client_publish(client, CONFIG_MQTT_PUB_TOPIC, payload, 0, CONFIG_MQTT_QOS, 0); // publication
 
                 printf("MQTT published at %s: %s\n", timestamp, payload);
             } else {
@@ -392,7 +396,7 @@ void app_main()
     assert(mqtt_queue != NULL);
 
     xTaskCreatePinnedToCore(si7021_task, "si7021", configMINIMAL_STACK_SIZE * 8, NULL, 5, NULL, APP_CPU_NUM);
-    xTaskCreatePinnedToCore(queue_writer_task, "queue_writer", configMINIMAL_STACK_SIZE * 4, NULL, 4, NULL, APP_CPU_NUM);
+    xTaskCreatePinnedToCore(decision_task, "decision", configMINIMAL_STACK_SIZE * 4, NULL, 4, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(wifi_task, "wifi", configMINIMAL_STACK_SIZE * 8, NULL, 3, NULL, APP_CPU_NUM);
     xTaskCreatePinnedToCore(mqtt_task, "mqtt", configMINIMAL_STACK_SIZE * 8, NULL, 4, NULL, APP_CPU_NUM);
 }
