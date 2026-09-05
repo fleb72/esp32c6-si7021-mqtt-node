@@ -73,9 +73,9 @@ void si7021_task(void *pvParameters)
     i2c_dev_t dev;
     memset(&dev, 0, sizeof(i2c_dev_t));
 
-    ESP_ERROR_CHECK(si7021_init_desc(&dev, 0, CONFIG_EXAMPLE_I2C_MASTER_SDA, CONFIG_EXAMPLE_I2C_MASTER_SCL));
+    ESP_ERROR_CHECK(si7021_init_desc(&dev, 0, CONFIG_I2C_MASTER_SDA, CONFIG_I2C_MASTER_SCL));
 
-#ifdef CONFIG_EXAMPLE_CHIP_TYPE_SI70xx
+#ifdef CONFIG_CHIP_TYPE_SI70xx
     uint64_t serial;
     si7021_device_id_t id;
 
