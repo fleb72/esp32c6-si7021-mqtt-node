@@ -12,16 +12,18 @@ Il est recommandé d’utiliser cette version ou une version ultérieure compati
 Le programme repose sur plusieurs tâches FreeRTOS :
 
 - **si7021_task**
-Lecture périodique du capteur SI7021 via I²C.
+Lecture périodique du capteur SI7021 via I²C (toutes les 10s par défaut).
 
-- **queue_writer_task**  
-Détection des variations significatives (température / humidité) et envoi périodique d’un message dans une queue.
+- **decision_task**  
+Décision de publication.
+Détection des variations significatives (température / humidité).
+Publication si seuil de température ou humidité franchi, envoi périodique sinon (toutes les 10min par défaut).
 
 - **mqtt_task**  
 Publication des mesures en MQTT dès qu’un message est disponible dans la queue. La publication est horodatée (RTC et synchro via SNTP).
 
 - **wifi_task**  
-Connexion au réseau Wi‑Fi en mode station.
+Connexion au réseau Wi‑Fi en mode station. Gestion des évènements réseau.
 
 Les tâches communiquent via :
 
@@ -31,29 +33,35 @@ Les tâches communiquent via :
 
 ## Configuration
 Les paramètres suivants sont configurables via `idf.py menuconfig` :
+- Paramètres WiFi
+  - SSID / mot de passe Wi‑Fi
+  - URI du broker MQTT
 
-- SSID / mot de passe Wi‑Fi
+- Paramètres MQTT
+  - Port MQTT
+  - Topic de publication
+  - QoS
+  - Identifiants MQTT (optionnels)
 
-- URI du broker MQTT
-
-- Port MQTT
-
-- Topic de publication
-
-- QoS
-
-- Identifiants MQTT (optionnels)
+- Paramètres de décision de publication
+  - Intervalle entre deux acquisitions du capteur SI7021 (secondes)
+  - Seuil de variation de température (dixièmes de °C)
+  - Seuil variation humidité (dixièmes de %)
+  - Délai minimal entre deux publications MQTT (secondes)
+  - Intervalle de publication périodique (minutes)
 
 Le fichier `Kconfig.projbuild` contient les entrées correspondantes.
+
+
 
 ## Quick Start
 
 ```
 git clone https://github.com/fleb72/esp32c6-si7021-mqtt-node
 idf.py set-target esp32c6
-idf.py menuconfig   # configurer WiFi + MQTT
+idf.py menuconfig      # configurer WiFi + MQTT + paramètres de décision de publication
 idf.py build
-idf.py -p PORT flash // PORT=/dev/ttyUSB0 ou PORT=COM3, etc.
+idf.py -p PORT flash   # PORT=/dev/ttyUSB0 ou PORT=COM3, etc.
 idf.py -p PORT monitor
 ```
 
